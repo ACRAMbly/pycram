@@ -9,6 +9,8 @@ from pycram.ros import create_subscriber, node
 from perception_interfaces.msg import CubePoses
 from perception_interfaces.srv import GetCubePoses
 
+from pycram.external_interfaces.giskard import sync_objects
+
 world : World = None
 
 def update_object_poses(poses):
@@ -51,6 +53,7 @@ class PerceptionClient:
         poses = [("Cube_1", self.cube1_pose), ("Cube_2", self.cube2_pose), ("Cube_3", self.cube3_pose)]
         print(poses)
         update_object_poses(poses)
+        sync_objects()
 
 class PerceptionClientNew:
     def __init__(self):
@@ -63,3 +66,4 @@ class PerceptionClientNew:
         response = future.result()
         poses = [("Cube_1", response.cube_1_pose), ("Cube_2", response.cube_2_pose), ("Cube_3", response.cube_3_pose)]
         update_object_poses(poses)
+        sync_objects()

@@ -1,6 +1,7 @@
 import json
 import threading
 
+import geometry_msgs.msg
 import sys
 
 
@@ -886,6 +887,26 @@ def set_cart_goal(goal_pose: PoseStamped,
 def execute(add_default=True):
     if add_default:
         giskard_wrapper.add_default_end_motion_conditions()
-        #allow_self_collision()
-        #allow_all_collision()
+        allow_self_collision()
+        allow_all_collision()
     return print(giskard_wrapper.execute().error)
+
+@init_giskard_interface
+def sync_objects():
+    """
+    Syncs the objects in giskard with the pycram belief state
+    """
+    groups = giskard_wrapper.world.get_group_names()
+    for obj in World.current_world.objects:
+        if obj is World.robot or obj is World.current_world.get_prospection_object_for_object(World.robot):
+            continue
+        name = obj.name
+        if name in groups and name != "floor":
+            pose = geometry_msgs.msg.PoseStamped()
+            obj_pose = obj.get_pose()
+            pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = (obj_pose.position.x,
+                                                                                obj_pose.position.y,
+                                                                                obj_pose.position.z)
+            pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w = (
+                obj_pose.orientation.x, obj_pose.orientation.y, obj_pose.orientation.z, obj_pose.orientation.w)
+            giskard_wrapper.world.update_group_pose(name, pose)
