@@ -11,12 +11,16 @@ from perception_interfaces.srv import GetCubePoses
 
 from pycram.external_interfaces.giskard import sync_objects
 
+from pycram.local_transformer import LocalTransformer
+
 world : World = None
+
+transformer = LocalTransformer()
 
 def update_object_poses(poses):
     for pose in poses:
         obj_name = pose[0]
-        obj_pose = PoseStamped.from_ros_message(pose[1])
+        obj_pose = transformer.transform_pose(PoseStamped.from_ros_message(pose[1]), "map")
         if world is not None:
             for obj in world.objects:
                 if obj.name == obj_name:

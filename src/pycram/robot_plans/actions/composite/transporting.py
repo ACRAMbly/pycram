@@ -22,6 +22,7 @@ from ....has_parameters import has_parameters
 from ....plan import with_plan
 from ....robot_description import RobotDescription
 from ....robot_plans.actions.base import ActionDescription, record_object_pre_perform
+from ....robot_plans.motions.gripper import MoveTCPMotion
 from ....ros import loginfo
 from ....world_concepts.world_object import Object
 from ....datastructures.world import World
@@ -403,12 +404,66 @@ class EfficientTransportAction(ActionDescription):
                                  object_designator=object_designator,
                                  target_location=target_location)
 
+@has_parameters
+@dataclass
+class HoldAction(ActionDescription):
+    """
+    Transports an object to a position using an arm without moving the base of the robot
+    """
 
+    object_designator: Object
+    """
+    Object designator_description describing the object that should be transported.
+    """
+    target_location: PoseStamped
+    """
+    Target Location to which the object should be transported
+    """
+    arm: Arms
+    """
+    Arm that should be used
+    """
+    grasp_description: GraspDescription
+    """
+    Description of the grasp to pick up the target
+    """
+    _pre_perform_callbacks = []
+    """
+    List to save the callbacks which should be called before performing the action.
+    """
 
+    def __post_init__(self):
+        super().__post_init__()
 
+        # Store the object's data copy at execution
+        self.pre_perform(record_object_pre_perform)
+
+    def plan(self) -> None:
+        ParkArmsActionDescription(Arms.BOTH).perform()
+        PickUpActionDescription(self.object_designator, self.arm,
+                     grasp_description=self.grasp_description).perform()
+        MoveTCPMotion(self.target_location, self.arm).perform()
+
+    def validate(self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None):
+        if self.object_designator.pose.__eq__(self.target_location):
+            pass
+        else:
+            raise ValueError("Object not moved to the target location")
+
+    @classmethod
+    @with_plan
+    def description(cls, object_designator: Union[Iterable[Object], Object],
+                    target_location: Union[Iterable[PoseStamped], PoseStamped],
+                    arm: Union[Iterable[Arms], Arms] = None,
+                    grasp_description = GraspDescription) -> PartialDesignator[Type[PickAndPlaceAction]]:
+        return PartialDesignator(HoldAction, object_designator=object_designator,
+                                 target_location=target_location,
+                                 arm=arm,
+                                 grasp_description=grasp_description)
 
 TransportActionDescription = TransportAction.description
 PickAndPlaceActionDescription = PickAndPlaceAction.description
 MoveAndPlaceActionDescription = MoveAndPlaceAction.description
 MoveAndPickUpActionDescription = MoveAndPickUpAction.description
 EfficientTransportActionDescription = EfficientTransportAction.description
+HoldActionDescription = HoldAction.description
